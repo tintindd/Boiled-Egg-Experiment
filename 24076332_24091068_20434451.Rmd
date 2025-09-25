@@ -1,0 +1,201 @@
+---
+title: "Supplementary Information"
+output: pdf_document
+---
+
+```{r setup, echo=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning= FALSE}
+# Upload librarys
+options(tinytex.verbose = TRUE)
+suppressPackageStartupMessages({
+library(readxl)
+library(writexl)
+library(ggplot2)
+library(lme4)
+library(dplyr)
+library(pwr)
+})
+```
+
+```{r, warning = FALSE}
+# Upload data
+df <- data.frame(
+  Time = c(6, 6, 6, 6.5, 6.5, 6.5, 6, 6, 6, 6.5, 6.5, 6.5, 7, 7, 7, 7.5,
+           7.5, 7.5, 7, 7, 7, 7.5, 7.5, 7.5, 8, 8, 8, 8.5, 8.5, 8.5, 8, 
+           8, 8, 8.5, 8.5, 8.5),
+  Size = c("M", "L", "VL", "M", "L", "VL", "M", "L", "VL", "M", "L", "VL", 
+           "M", "L", "VL", "M", "L", "VL", "M", "L", "VL", "M", "L", "VL", 
+           "M", "L", "VL", "M", "L", "VL", "M", "L", "VL", "M", "L", "VL"),
+  EL_cm = c(2.8, 3.0, 3.4, 2.5, 2.9, 3.3, 2.9, 3.1, 3.0, 3.0, 3.3, 3.5, 
+            3.0, 3.0, 3.0, 2.7, 2.6, 5.0, 2.8, 2.7, 2.9, 2.8, 2.9, 2.8, 
+            2.8, 2.6, 3.5, 2.5, 2.7, 2.8, 2.5, 2.5, 2.7, 2.8, 2.5, 2.8),
+  EW_cm = c(0.9, 0.5, 0.3, 0.9, 0.9, 0.5, 0.8, 0.8, 0.4, 0.5, 0.4, 0.5, 
+            0.8, 0.9, 0.3, 0.8, 1.0, 0.5, 0.5, 0.3, 0.3, 0.7, 0.5, 0.4, 
+            1.2, 0.7, 1.0, 1.3, 1.1, 1.0, 1.0, 0.5, 0.5, 1.0, 0.9, 0.5),
+  Temperature = c("RT", "RT", "RT", "RT", "RT", "RT", "RS", "RS", "RS", 
+                  "RS", "RS", "RS", "RT", "RT", "RT", "RT", "RT", "RT", 
+                  "RS", "RS", "RS", "RS", "RS", "RS", "RT", "RT", "RT", 
+                  "RT", "RT", "RT", "RS", "RS", "RS", "RS", "RS", "RS"),
+  Ratio = c(0.357, 0.667, 0.824, 0.280, 0.379, 0.697, 0.448, 0.484, 0.733, 
+            0.667, 0.758, 0.714, 0.467, 0.400, 0.800, 0.407, 0.231, 0.800, 
+            0.643, 0.778, 0.793, 0.500, 0.655, 0.714, 0.143, 0.462, 0.429, 
+            -0.040, 0.185, 0.286, 0.200, 0.600, 0.630, 0.286, 0.280, 0.643)
+)
+```
+
+```{r, warning = FALSE}
+# Ensure that the data type is correct
+df$Time <- as.numeric(df$Time)
+df$Size <- as.factor(df$Size)
+df$Temperature <- as.factor(df$Temperature)
+```
+
+```{r, warning = FALSE, results = "hide"}
+# Transform negative values of Ratio to zero.
+last_col <- ncol(df)
+df[, last_col] <- ifelse(df[, last_col] < 0, 0, df[[last_col]])
+```
+
+```{r, warning = FALSE, results = "hide" }
+## Power of Test
+# 6 eggs
+eggs <- df %>%
+  slice(c(1, 5, 15, 22, 32, 36))
+print(eggs)
+```
+
+```{r, warning = FALSE, results = "hide"}
+## Power of Test
+# sd
+sd_ratio <- sd(eggs$Ratio, na.rm = TRUE)
+print(paste("standard deviation :", round(sd_ratio, 2)))
+
+# calculate delta
+delta_ratio <- 0.2
+```
+
+```{r, warning = FALSE, results = "hide"}
+## Power of Test
+alpha <- 0.05/2
+beta <- 0.3
+z_alpha <- qnorm(1 - alpha)  
+z_beta <- qnorm(1 - beta) 
+n_required <- (2 * sd_ratio^2 * (z_alpha + z_beta)^2) / delta_ratio^2
+total_n_required <- 2 * n_required  
+
+print(paste("sample:", round(total_n_required, 2)))
+```
+
+```{r ,warning = FALSE, results = "hide"}
+## Power of Test
+n_required_size <- (2 * sd_ratio^2 * (z_alpha + z_beta)^2) / delta_ratio^2
+total_n_size <- 3 * n_required_size  
+print(paste("Chicken Size sample:", round(total_n_size, 2)))
+```
+
+```{r ,warning = FALSE, results = "hide"}
+## Power of Test
+df$Time <- as.numeric(as.character(df$Time))
+R_squared <- 0.2
+f2 <- R_squared / (1 - R_squared)
+power_regression <- pwr.f2.test(u = 1, f2 = f2, sig.level = alpha, power = 1 - beta)
+print(power_regression)
+
+sample_size <- power_regression$v + power_regression$u + 1
+print(paste("Total sample size required for regression:", round(sample_size, 1)))
+```
+
+```{r, results = "hide", fig.show='hide'}
+# Interaction Effect 
+ ggplot(df, aes(x = Temperature, y = Ratio, color = Size, group = Size)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+  stat_summary(fun = mean, geom = "point", size = 3) +
+  labs(x = "Temperature", y = "Mean Ratio", color = "Size") +  
+  scale_color_brewer(palette = "Set1") +  
+  theme_bw(base_size = 14) +  
+  theme(legend.position = "right",  
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+```{r, results = "hide", fig.show='hide'}
+# Interaction Effect 
+ggplot(df, aes(x = Time, y = Ratio, color = Size, group = Size)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1.2) +
+  stat_summary(fun = mean, geom = "point", size = 3) +  
+  labs(x = "Time", y = "Mean Ratio", color = "Size") + 
+  scale_color_brewer(palette = "Set1") +  
+  theme_bw(base_size = 14) +
+  theme(legend.position = "right",
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+```{r, results = "hide", fig.show='hide'}
+# Interaction Effect 
+ggplot(df, aes(x = Time, y = Ratio, color = Temperature, group = Temperature)) +
+  stat_summary(fun = mean, geom = "line", linewidth = 1.2, alpha = 0.8) + 
+  stat_summary(fun = mean, geom = "point", size = 3, alpha = 0.8) +  
+  labs(x = "Time", y = "Mean Ratio", color = "Temperature") +  
+  scale_color_brewer(palette = "Set1") +  
+  theme_bw(base_size = 14) +  
+  theme(legend.position = "right",  
+        plot.title = element_text(hjust = 0.5, face = "bold"))
+```
+
+```{r, results = "hide"}
+# Fit Models
+fit1 <- aov(Ratio ~ Time, data = df)
+summary(fit1)
+fit2 <- aov(Ratio ~  Size, data = df)
+summary(fit2)
+fit3 <- aov(Ratio ~ Temperature, data = df)
+summary(fit3)
+#
+fit4 <- aov(Ratio ~ Time + Size, data = df)
+summary(fit4)
+fit5 <- aov(Ratio ~ Size + Temperature, data = df)
+summary(fit5)
+fit6 <- aov(Ratio ~ Temperature + Time, data = df)
+summary(fit6)
+#
+fit7 <- aov(Ratio ~  Size + Temperature + Time , data = df)
+summary(fit7)
+#
+fit8 <- aov(Ratio ~ Size * Temperature, data = df)
+summary(fit8)
+fit9 <- aov(Ratio ~ Time * Size , data = df)
+summary(fit9)
+fit10 <- aov(Ratio ~ Time * Temperature , data = df)
+summary(fit10)
+```
+
+```{r, results = "hide"}
+# Regression Results
+coef(summary.lm(fit7))
+summary.lm(fit7)
+```
+
+```{r, results = "hide"}
+# Prediction Results
+new_data <- data.frame(Size = "M",
+                       Temperature = "RS",
+                       Time = 6)
+pred <- predict(fit7,newdata = new_data, interval = "predict", level = 0.95)
+pred
+```
+
+```{r, results = "hide"}
+# Random Effect
+model_mixed <- lmer(Ratio ~ Temperature + Time + (1 | Size), data = df)
+summary(model_mixed)
+```
+
+```{r, results = "hide"}
+# Calculate ICC
+Var_Random <- as.numeric(VarCorr(model_mixed)$Size[1])
+Var_Residual <- as.numeric(attr(VarCorr(model_mixed), "sc")^2)
+ICC <- Var_Random / (Var_Random + Var_Residual)
+ICC
+```
